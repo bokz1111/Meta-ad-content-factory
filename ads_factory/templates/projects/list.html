@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Projects — Meta Ads Factory{% endblock %}
+
+{% block content %}
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+  <h1 style="margin-bottom:0;">Projects</h1>
+  <a href="/projects/new" class="btn btn-primary">+ New Project</a>
+</div>
+
+{% if projects %}
+<div class="card" style="padding:0;">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Brand</th>
+        <th>Languages</th>
+        <th>Created</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in projects %}
+      <tr>
+        <td>
+          <a href="/projects/{{ p.id }}" style="font-weight:600; color: var(--primary); text-decoration:none;">{{ p.name }}</a>
+        </td>
+        <td>{{ p.brand_name }}</td>
+        <td>
+          {% for lang in p.languages.split(',') %}
+            <span class="badge badge-draft">{{ lang.strip() }}</span>
+          {% endfor %}
+        </td>
+        <td class="meta">{{ p.created_at.strftime('%b %d, %Y') }}</td>
+        <td><a href="/projects/{{ p.id }}" class="btn btn-secondary btn-sm">Open</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <p>No projects yet.</p>
+    <a href="/projects/new" class="btn btn-primary">Create your first project</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

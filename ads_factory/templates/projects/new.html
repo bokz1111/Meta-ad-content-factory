@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}New Project — Meta Ads Factory{% endblock %}
+
+{% block content %}
+<div style="max-width:640px;">
+  <div style="margin-bottom:20px;">
+    <a href="/projects" style="color:var(--text-muted); text-decoration:none; font-size:13px;">← Back to Projects</a>
+  </div>
+
+  <h1>New Project</h1>
+
+  <div class="card">
+    <form method="post" action="/projects/new">
+      <div class="form-group">
+        <label for="name">Project Name *</label>
+        <input type="text" id="name" name="name" required placeholder="e.g. Summer Sale Campaign">
+      </div>
+
+      <div class="form-group">
+        <label for="brand_name">Brand Name *</label>
+        <input type="text" id="brand_name" name="brand_name" required placeholder="e.g. Acme Corp">
+      </div>
+
+      <div class="form-group">
+        <label for="product_description">Product Description *</label>
+        <textarea id="product_description" name="product_description" required
+          placeholder="Describe the product or service being advertised..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="offer_description">Offer Description</label>
+        <textarea id="offer_description" name="offer_description"
+          placeholder="Describe the specific offer, discount, or promotion..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="languages">Languages</label>
+        <select id="languages" name="languages">
+          <option value="EN">English only (EN)</option>
+          <option value="JP">Japanese only (JP)</option>
+          <option value="EN,JP">English + Japanese (EN, JP)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="brand_rules">Brand Rules / Guidelines</label>
+        <textarea id="brand_rules" name="brand_rules"
+          placeholder="Tone of voice, forbidden words, visual rules, etc..."></textarea>
+      </div>
+
+      <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:24px;">
+        <a href="/projects" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Create Project</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

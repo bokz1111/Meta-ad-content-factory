@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }} — Meta Ads Factory{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+  <a href="/projects" style="color:var(--text-muted); text-decoration:none; font-size:13px;">← Back to Projects</a>
+</div>
+
+<!-- Project Header -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h1 style="margin-bottom:4px;">{{ project.name }}</h1>
+      <span class="meta">{{ project.brand_name }}</span>
+      {% for lang in project.languages.split(',') %}
+        <span class="badge badge-draft" style="margin-left:6px;">{{ lang.strip() }}</span>
+      {% endfor %}
+    </div>
+    <div class="meta">Created {{ project.created_at.strftime('%b %d, %Y') }}</div>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <h3>Product Description</h3>
+      <p style="color:var(--text-muted);">{{ project.product_description }}</p>
+    </div>
+    {% if project.offer_description %}
+    <div>
+      <h3>Offer</h3>
+      <p style="color:var(--text-muted);">{{ project.offer_description }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if project.brand_rules %}
+  <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+    <h3>Brand Rules</h3>
+    <p style="color:var(--text-muted); white-space:pre-line;">{{ project.brand_rules }}</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Stats Row -->
+<div class="grid-3" style="margin-bottom:24px;">
+  <div class="card" style="text-align:center; padding:16px;">
+    <div style="font-size:28px; font-weight:700; color:var(--primary);">{{ assets|length }}</div>
+    <div class="meta">Assets</div>
+  </div>
+  <div class="card" style="text-align:center; padding:16px;">
+    <div style="font-size:28px; font-weight:700; color:var(--primary);">{{ angles|length }}</div>
+    <div class="meta">Angles</div>
+  </div>
+  <div class="card" style="text-align:center; padding:16px;">
+    <div style="font-size:28px; font-weight:700; color:var(--primary);">{{ variants|length }}</div>
+    <div class="meta">Variants</div>
+  </div>
+</div>
+
+<!-- Assets Section -->
+<div class="section">
+  <details {% if assets %}open{% endif %}>
+    <summary>Assets ({{ assets|length }})</summary>
+    <div class="details-body">
+      {% if assets %}
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Landing Page</th>
+            <th>Image Path</th>
+            <th>Notes</th>
+            <th>Added</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in assets %}
+          <tr>
+            <td class="meta">{{ a.id }}</td>
+            <td>
+              {% if a.landing_page_url %}
+                <a href="{{ a.landing_page_url }}" target="_blank" class="truncate" style="color:var(--primary);">
+                  {{ a.landing_page_url }}
+                </a>
+              {% else %}
+                <span class="meta">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if a.image_path %}
+                <code style="font-size:12px; background:var(--bg); padding:2px 6px; border-radius:4px;">{{ a.image_path }}</code>
+              {% else %}
+                <span class="meta">—</span>
+              {% endif %}
+            </td>
+            <td class="meta">{{ a.notes or '—' }}</td>
+            <td class="meta">{{ a.created_at.strftime('%b %d') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:16px;">
+      {% endif %}
+
+      <form method="post" action="/projects/{{ project.id }}/assets" style="margin-top: {% if assets %}0{% else %}0{% endif %};">
+        <h3 style="margin-bottom:12px;">Add Asset</h3>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Landing Page URL</label>
+            <input type="text" name="landing_page_url" placeholder="https://example.com/offer">
+          </div>
+          <div class="form-group">
+            <label>Image Path</label>
+            <input type="text" name="image_path" placeholder="data/images/banner.jpg">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <input type="text" name="notes" placeholder="Optional notes about this asset">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Add Asset</button>
+      </form>
+      {% if assets %}</div>{% endif %}
+    </div>
+  </details>
+</div>
+
+<!-- Angles Section -->
+<div class="section">
+  <details {% if angles %}open{% endif %}>
+    <summary>Angles ({{ angles|length }})</summary>
+    <div class="details-body">
+      {% if angles %}
+      <div style="display:grid; gap:12px; margin-bottom:16px;">
+        {% for ang in angles %}
+        <div style="border:1px solid var(--border); border-radius:var(--radius); padding:14px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <strong>{{ ang.name }}</strong>
+            <span class="badge badge-draft">{{ ang.language }}</span>
+          </div>
+          <div class="grid-2">
+            {% if ang.pain_point %}
+            <div><span class="meta">Pain Point:</span> {{ ang.pain_point }}</div>
+            {% endif %}
+            {% if ang.benefit %}
+            <div><span class="meta">Benefit:</span> {{ ang.benefit }}</div>
+            {% endif %}
+            {% if ang.hook %}
+            <div><span class="meta">Hook:</span> {{ ang.hook }}</div>
+            {% endif %}
+            {% if ang.proof %}
+            <div><span class="meta">Proof:</span> {{ ang.proof }}</div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" action="/projects/{{ project.id }}/angles">
+        <h3 style="margin-bottom:12px;">Add Angle</h3>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Angle Name *</label>
+            <input type="text" name="name" required placeholder="e.g. Pain-Relief Angle">
+          </div>
+          <div class="form-group">
+            <label>Language</label>
+            <select name="language">
+              {% for lang in project.languages.split(',') %}
+              <option value="{{ lang.strip() }}">{{ lang.strip() }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Pain Point</label>
+            <textarea name="pain_point" rows="2" placeholder="What problem does the customer face?"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Benefit</label>
+            <textarea name="benefit" rows="2" placeholder="How does the product solve it?"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Hook</label>
+            <textarea name="hook" rows="2" placeholder="Attention-grabbing opening line"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Proof</label>
+            <textarea name="proof" rows="2" placeholder="Social proof, stats, testimonials..."></textarea>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Add Angle</button>
+      </form>
+    </div>
+  </details>
+</div>
+
+<!-- Variants Section -->
+<div class="section">
+  <details open>
+    <summary>Ad Variants ({{ variants|length }})</summary>
+    <div class="details-body">
+      {% if variants %}
+      <table style="margin-bottom:16px;">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Headline</th>
+            <th>Primary Text</th>
+            <th>Language</th>
+            <th>Angle</th>
+            <th>Asset</th>
+            <th>Status</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in variants %}
+          <tr>
+            <td class="meta">{{ v.id }}</td>
+            <td><strong>{{ v.headline or '—' }}</strong></td>
+            <td class="truncate meta">{{ v.primary_text or '—' }}</td>
+            <td><span class="badge badge-draft">{{ v.language }}</span></td>
+            <td class="meta">
+              {% if v.angle_id %}
+                {% for ang in angles if ang.id == v.angle_id %}{{ ang.name }}{% endfor %}
+              {% else %}—{% endif %}
+            </td>
+            <td class="meta">
+              {% if v.asset_id %}#{{ v.asset_id }}{% else %}—{% endif %}
+            </td>
+            <td>
+              <span class="badge badge-{{ v.status }}">{{ v.status }}</span>
+            </td>
+            <td class="meta">{{ v.created_at.strftime('%b %d') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
+      <details style="border:none; border-top: 1px solid var(--border); padding-top:16px;">
+        <summary style="background:none; padding:0 0 12px; font-size:14px; font-weight:600;">+ Add Variant</summary>
+        <div style="padding-top:8px;">
+        <form method="post" action="/projects/{{ project.id }}/variants">
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Headline</label>
+              <input type="text" name="headline" placeholder="Short punchy headline (40 chars)">
+            </div>
+            <div class="form-group">
+              <label>Language</label>
+              <select name="language">
+                {% for lang in project.languages.split(',') %}
+                <option value="{{ lang.strip() }}">{{ lang.strip() }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Primary Text</label>
+            <textarea name="primary_text" rows="3" placeholder="Main ad copy (125 chars ideal)"></textarea>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Description</label>
+              <input type="text" name="description" placeholder="Link description below headline">
+            </div>
+            <div class="form-group">
+              <label>Overlay Text</label>
+              <input type="text" name="overlay_text" placeholder="Text on image overlay">
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Angle</label>
+              <select name="angle_id">
+                <option value="">— None —</option>
+                {% for ang in angles %}
+                <option value="{{ ang.id }}">{{ ang.name }} ({{ ang.language }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Asset</label>
+              <select name="asset_id">
+                <option value="">— None —</option>
+                {% for a in assets %}
+                <option value="{{ a.id }}">#{{ a.id }} — {{ a.landing_page_url or a.image_path or 'Asset' }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Template ID</label>
+            <input type="text" name="template_id" placeholder="e.g. template_v1_square">
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-sm">Add Variant</button>
+        </form>
+        </div>
+      </details>
+    </div>
+  </details>
+</div>
+{% endblock %}
