@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Float
-from sqlalchemy.orm import relationship, DeclarativeBase
+from sqlalchemy.orm import relationship, DeclarativeBase, validates
 
 
 class Base(DeclarativeBase):
@@ -36,6 +36,10 @@ class Asset(Base):
 
     project = relationship("Project", back_populates="assets")
     variants = relationship("Variant", back_populates="asset")
+    landing_summaries = relationship(
+        "LandingSummary", back_populates="asset", cascade="all, delete-orphan",
+        order_by="LandingSummary.fetched_at.desc()",
+    )
 
 
 class Angle(Base):
@@ -88,6 +92,26 @@ class Render(Base):
 
     variant = relationship("Variant", back_populates="renders")
     qc_result = relationship("QCResult", back_populates="render", uselist=False)
+
+
+class LandingSummary(Base):
+    __tablename__ = "landing_summaries"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=False)
+    url = Column(String(512), nullable=False)
+    fetched_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    http_status = Column(Integer, nullable=True)
+    title = Column(String(512), nullable=True)
+    h1 = Column(String(512), nullable=True)
+    meta_description = Column(Text, nullable=True)
+    canonical_url = Column(String(512), nullable=True)
+    language_detected = Column(String(10), nullable=True)
+    extracted_json = Column(Text, nullable=True)       # JSON: headings, bullets, ctas, prices, paras
+    raw_text_excerpt = Column(Text, nullable=True)     # capped at 10k chars
+    content_hash = Column(String(64), nullable=True)   # sha256 for cache comparison
+
+    asset = relationship("Asset", back_populates="landing_summaries")
 
 
 class QCResult(Base):

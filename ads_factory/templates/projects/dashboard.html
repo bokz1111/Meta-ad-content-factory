@@ -70,11 +70,13 @@
             <th>Landing Page</th>
             <th>Image Path</th>
             <th>Notes</th>
+            <th>Landing Data</th>
             <th>Added</th>
           </tr>
         </thead>
         <tbody>
           {% for a in assets %}
+          {% set summary = asset_summaries.get(a.id) %}
           <tr>
             <td class="meta">{{ a.id }}</td>
             <td>
@@ -94,15 +96,76 @@
               {% endif %}
             </td>
             <td class="meta">{{ a.notes or '—' }}</td>
+            <td>
+              {% if a.landing_page_url %}
+                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                  {% if summary %}
+                    {% if summary.http_status and summary.http_status >= 400 %}
+                      <span class="badge" style="background:#fdecea; color:#c0392b;">error {{ summary.http_status }}</span>
+                    {% else %}
+                      <span class="badge badge-ready" title="Fetched {{ summary.fetched_at }}">
+                        {{ summary.fetched_at.strftime('%b %d %H:%M') }}
+                      </span>
+                    {% endif %}
+                  {% else %}
+                    <span class="meta" style="font-size:11px;">not fetched</span>
+                  {% endif %}
+                  <form method="post" action="/assets/{{ a.id }}/fetch-landing?project_id={{ project.id }}" style="margin:0;">
+                    <button type="submit" class="btn btn-secondary btn-sm" title="Fetch / refresh landing page data">
+                      {% if summary %}↻ Refresh{% else %}Fetch{% endif %}
+                    </button>
+                  </form>
+                </div>
+              {% else %}
+                <span class="meta">—</span>
+              {% endif %}
+            </td>
             <td class="meta">{{ a.created_at.strftime('%b %d') }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
+
+      <!-- Per-asset landing summaries (collapsed) -->
+      {% for a in assets %}
+        {% set summary = asset_summaries.get(a.id) %}
+        {% if summary and summary.extracted_json %}
+        <details style="margin-top:8px; border:1px solid var(--border); border-radius:var(--radius);">
+          <summary style="padding:8px 14px; background:var(--bg); font-size:13px; cursor:pointer; user-select:none;">
+            Asset #{{ a.id }} — Landing summary
+            <span class="meta" style="margin-left:8px;">
+              {{ summary.title or summary.url }}
+              · fetched {{ summary.fetched_at.strftime('%b %d, %Y %H:%M') }}
+              {% if summary.language_detected %}· {{ summary.language_detected }}{% endif %}
+            </span>
+          </summary>
+          <div style="padding:14px;">
+            {% if summary.title or summary.h1 or summary.meta_description %}
+            <div class="grid-2" style="margin-bottom:12px; gap:8px;">
+              {% if summary.title %}
+              <div><span class="meta">Title:</span> {{ summary.title }}</div>
+              {% endif %}
+              {% if summary.h1 %}
+              <div><span class="meta">H1:</span> {{ summary.h1 }}</div>
+              {% endif %}
+              {% if summary.meta_description %}
+              <div style="grid-column:1/-1;"><span class="meta">Meta description:</span> {{ summary.meta_description }}</div>
+              {% endif %}
+            </div>
+            {% endif %}
+            <details style="border:none;">
+              <summary style="background:none; padding:0 0 6px; font-size:12px; font-weight:600; cursor:pointer;">Full extracted JSON</summary>
+              <pre style="font-size:11px; background:var(--bg); padding:12px; border-radius:var(--radius); overflow:auto; max-height:320px; margin-top:6px;">{{ summary.extracted_json }}</pre>
+            </details>
+          </div>
+        </details>
+        {% endif %}
+      {% endfor %}
+
       <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:16px;">
       {% endif %}
 
-      <form method="post" action="/projects/{{ project.id }}/assets" style="margin-top: {% if assets %}0{% else %}0{% endif %};">
+      <form method="post" action="/projects/{{ project.id }}/assets">
         <h3 style="margin-bottom:12px;">Add Asset</h3>
         <div class="grid-2">
           <div class="form-group">

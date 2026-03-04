@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .backend.database import init_db
 from .backend.routers import projects as projects_router
+from .backend.routers import assets as assets_router
 
 app = FastAPI(title="Meta Ads Creative Factory", version="0.1.0")
 
@@ -24,6 +25,7 @@ def on_startup():
 
 # Include routers
 app.include_router(projects_router.router)
+app.include_router(assets_router.router)
 
 
 @app.get("/health")

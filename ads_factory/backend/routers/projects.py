@@ -6,7 +6,7 @@ from typing import Optional
 from pathlib import Path
 
 from ..database import get_db
-from ..models import Project, Asset, Angle, Variant
+from ..models import Project, Asset, Angle, Variant, LandingSummary
 from ..schemas import ProjectCreate, AssetCreate, AngleCreate, VariantCreate
 
 router = APIRouter()
@@ -113,12 +113,26 @@ def project_dashboard(request: Request, project_id: int, db: Session = Depends(g
     assets = db.query(Asset).filter(Asset.project_id == project_id).all()
     angles = db.query(Angle).filter(Angle.project_id == project_id).all()
     variants = db.query(Variant).filter(Variant.project_id == project_id).order_by(Variant.created_at.desc()).all()
+
+    # Latest LandingSummary per asset for UI status indicators
+    asset_summaries: dict = {}
+    for asset in assets:
+        latest = (
+            db.query(LandingSummary)
+            .filter(LandingSummary.asset_id == asset.id)
+            .order_by(LandingSummary.fetched_at.desc())
+            .first()
+        )
+        if latest:
+            asset_summaries[asset.id] = latest
+
     return templates.TemplateResponse("projects/dashboard.html", {
         "request": request,
         "project": project,
         "assets": assets,
         "angles": angles,
         "variants": variants,
+        "asset_summaries": asset_summaries,
     })
 
 
