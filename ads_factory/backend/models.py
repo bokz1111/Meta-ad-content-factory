@@ -1,6 +1,6 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Float
-from sqlalchemy.orm import relationship, DeclarativeBase, validates
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Float, Boolean
+from sqlalchemy.orm import relationship, DeclarativeBase
 
 
 class Base(DeclarativeBase):
@@ -112,6 +112,47 @@ class LandingSummary(Base):
     content_hash = Column(String(64), nullable=True)   # sha256 for cache comparison
 
     asset = relationship("Asset", back_populates="landing_summaries")
+
+
+class AgentConfig(Base):
+    """A reusable agent definition: prompts, schema, model settings."""
+    __tablename__ = "agents"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False, unique=True)
+    description = Column(Text, nullable=True)
+    purpose = Column(String(50), default="creative")   # research|creative|critic|compliance|planner
+    system_prompt = Column(Text, nullable=False)
+    user_prompt_template = Column(Text, nullable=False)  # supports {{variables}}
+    output_json_schema = Column(Text, nullable=True)     # JSON Schema as text
+    model_provider = Column(String(50), default="anthropic")
+    model_name = Column(String(100), default="claude-sonnet-4-6")
+    temperature = Column(Float, default=0.7)
+    max_tokens = Column(Integer, default=4096)
+    is_enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    runs = relationship("AgentRun", back_populates="agent", cascade="all, delete-orphan")
+
+
+class AgentRun(Base):
+    """A single execution record for an agent."""
+    __tablename__ = "agent_runs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    agent_id = Column(Integer, ForeignKey("agents.id"), nullable=False)
+    project_id = Column(Integer, nullable=True)
+    asset_id = Column(Integer, nullable=True)
+    run_type = Column(String(100), nullable=True)    # e.g. "angle_builder"
+    input_json = Column(Text, nullable=True)
+    output_json = Column(Text, nullable=True)
+    status = Column(String(20), default="pending")   # success|error
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    duration_ms = Column(Integer, nullable=True)
+
+    agent = relationship("AgentConfig", back_populates="runs")
 
 
 class QCResult(Base):

@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}{% if agent %}{{ agent.name }} — Edit Agent{% else %}New Agent — Meta Ads Factory{% endif %}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+  <a href="/agents" style="color:var(--text-muted); text-decoration:none; font-size:13px;">← Back to Agents</a>
+</div>
+
+<h1 style="margin-bottom:20px;">
+  {% if agent %}Edit Agent: <code style="font-size:18px;">{{ agent.name }}</code>{% else %}New Agent{% endif %}
+</h1>
+
+<div class="grid-2" style="align-items:start; gap:20px;">
+
+  <!-- Left: form -->
+  <div>
+    <div class="card">
+      <form method="post" action="{% if agent %}/agents/{{ agent.id }}{% else %}/agents{% endif %}">
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="name">Agent Name * <span class="meta">(unique slug)</span></label>
+            <input type="text" id="name" name="name" required
+              value="{{ agent.name if agent else '' }}"
+              placeholder="e.g. angle_builder_en">
+          </div>
+          <div class="form-group">
+            <label for="purpose">Purpose</label>
+            <select id="purpose" name="purpose">
+              {% for p in purpose_options %}
+              <option value="{{ p }}" {% if agent and agent.purpose == p %}selected{% endif %}>{{ p }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="description">Description</label>
+          <input type="text" id="description" name="description"
+            value="{{ agent.description if agent else '' }}"
+            placeholder="Short description of what this agent does">
+        </div>
+
+        <div class="form-group">
+          <label for="system_prompt">
+            System Prompt *
+            <span class="meta">(sets the AI's role and hard rules)</span>
+          </label>
+          <textarea id="system_prompt" name="system_prompt" required rows="8"
+            placeholder="You are an expert copywriter...">{{ agent.system_prompt if agent else '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="user_prompt_template">
+            User Prompt Template *
+            <span class="meta">
+              — variables: <code>{{brand_name}}</code> <code>{{brand_rules}}</code>
+              <code>{{product_description}}</code> <code>{{offer_description}}</code>
+              <code>{{landing_summary_json}}</code> <code>{{language}}</code>
+              <code>{{project_name}}</code>
+            </span>
+          </label>
+          <textarea id="user_prompt_template" name="user_prompt_template" required rows="14"
+            placeholder="Generate angles for {{brand_name}}...&#10;Landing data: {{landing_summary_json}}">{{ agent.user_prompt_template if agent else '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="output_json_schema">
+            Output JSON Schema
+            <span class="meta">(JSON Schema Draft-07; leave blank to skip validation)</span>
+          </label>
+          <textarea id="output_json_schema" name="output_json_schema" rows="6"
+            placeholder='{"type":"object","required":["angles"],...}'>{{ agent.output_json_schema if agent else '' }}</textarea>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="model_provider">Model Provider</label>
+            <select id="model_provider" name="model_provider">
+              <option value="anthropic" {% if not agent or agent.model_provider == 'anthropic' %}selected{% endif %}>anthropic</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="model_name">Model Name</label>
+            <input type="text" id="model_name" name="model_name"
+              value="{{ agent.model_name if agent else 'claude-sonnet-4-6' }}"
+              placeholder="claude-sonnet-4-6">
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="temperature">Temperature <span class="meta">(0 – 1)</span></label>
+            <input type="number" id="temperature" name="temperature" step="0.05" min="0" max="1"
+              value="{{ agent.temperature if agent else 0.7 }}">
+          </div>
+          <div class="form-group">
+            <label for="max_tokens">Max Tokens</label>
+            <input type="number" id="max_tokens" name="max_tokens" min="256" max="32768"
+              value="{{ agent.max_tokens if agent else 4096 }}">
+          </div>
+        </div>
+
+        <div class="form-group" style="display:flex; align-items:center; gap:10px;">
+          <input type="checkbox" id="is_enabled" name="is_enabled" value="1"
+            {% if not agent or agent.is_enabled %}checked{% endif %}
+            style="width:auto;">
+          <label for="is_enabled" style="margin:0; font-size:14px; font-weight:500; text-transform:none; letter-spacing:0;">
+            Enabled (disabled agents cannot be run)
+          </label>
+        </div>
+
+        <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:24px; padding-top:16px; border-top:1px solid var(--border);">
+          <a href="/agents" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">
+            {% if agent %}Save Changes{% else %}Create Agent{% endif %}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Right: recent runs (edit mode only) -->
+  {% if agent %}
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <h2 style="margin-bottom:0;">Recent Runs</h2>
+        <span class="meta">Last 20</span>
+      </div>
+      {% if runs %}
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Status</th>
+            <th>Project</th>
+            <th>Asset</th>
+            <th>Duration</th>
+            <th>When</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in runs %}
+          <tr>
+            <td class="meta">{{ r.id }}</td>
+            <td>
+              {% if r.status == 'success' %}
+                <span class="badge badge-ready">success</span>
+              {% else %}
+                <span class="badge" style="background:#fdecea; color:#c0392b;">error</span>
+              {% endif %}
+            </td>
+            <td class="meta">{{ r.project_id or '—' }}</td>
+            <td class="meta">{{ r.asset_id or '—' }}</td>
+            <td class="meta">{{ r.duration_ms ~ 'ms' if r.duration_ms else '—' }}</td>
+            <td class="meta">{{ r.created_at.strftime('%b %d %H:%M') }}</td>
+            <td>
+              <a href="/api/agent-runs/{{ r.id }}" target="_blank"
+                class="btn btn-secondary btn-sm">JSON</a>
+            </td>
+          </tr>
+          {% if r.status == 'error' and r.error_message %}
+          <tr>
+            <td colspan="7" style="padding:4px 12px 10px;">
+              <div style="font-size:11px; color:#c0392b; background:#fdecea; padding:6px 10px; border-radius:var(--radius);">
+                {{ r.error_message }}
+              </div>
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state" style="padding:20px;">
+        <p>No runs yet for this agent.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card" style="margin-top:16px; padding:14px 16px;">
+      <h3 style="margin-bottom:8px;">Stub mode</h3>
+      <p class="meta">
+        When <code>ANTHROPIC_API_KEY</code> is not set, the LLM service returns
+        deterministic mock angles so you can test the full pipeline without API costs.
+        Set the env var to switch to real model calls.
+      </p>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

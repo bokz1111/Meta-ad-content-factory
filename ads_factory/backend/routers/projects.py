@@ -6,7 +6,7 @@ from typing import Optional
 from pathlib import Path
 
 from ..database import get_db
-from ..models import Project, Asset, Angle, Variant, LandingSummary
+from ..models import Project, Asset, Angle, Variant, LandingSummary, AgentConfig, AgentRun
 from ..schemas import ProjectCreate, AssetCreate, AngleCreate, VariantCreate
 
 router = APIRouter()
@@ -116,15 +116,33 @@ def project_dashboard(request: Request, project_id: int, db: Session = Depends(g
 
     # Latest LandingSummary per asset for UI status indicators
     asset_summaries: dict = {}
+    asset_runs: dict = {}
     for asset in assets:
-        latest = (
+        latest_summary = (
             db.query(LandingSummary)
             .filter(LandingSummary.asset_id == asset.id)
             .order_by(LandingSummary.fetched_at.desc())
             .first()
         )
-        if latest:
-            asset_summaries[asset.id] = latest
+        if latest_summary:
+            asset_summaries[asset.id] = latest_summary
+
+        latest_run = (
+            db.query(AgentRun)
+            .filter(AgentRun.asset_id == asset.id)
+            .order_by(AgentRun.created_at.desc())
+            .first()
+        )
+        if latest_run:
+            asset_runs[asset.id] = latest_run
+
+    # Enabled angle-builder agents for the run widget
+    angle_agents = (
+        db.query(AgentConfig)
+        .filter(AgentConfig.is_enabled == True)  # noqa: E712
+        .order_by(AgentConfig.name)
+        .all()
+    )
 
     return templates.TemplateResponse("projects/dashboard.html", {
         "request": request,
@@ -133,6 +151,8 @@ def project_dashboard(request: Request, project_id: int, db: Session = Depends(g
         "angles": angles,
         "variants": variants,
         "asset_summaries": asset_summaries,
+        "asset_runs": asset_runs,
+        "angle_agents": angle_agents,
     })
 
 

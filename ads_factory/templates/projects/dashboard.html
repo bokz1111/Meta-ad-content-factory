@@ -41,6 +41,17 @@
   {% endif %}
 </div>
 
+<!-- Agents bar -->
+<div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; padding:10px 16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow);">
+  <span style="font-size:13px; color:var(--text-muted);">Agents:</span>
+  {% for ag in angle_agents %}
+    <span class="badge {% if ag.is_enabled %}badge-ready{% else %}badge-draft{% endif %}">{{ ag.name }}</span>
+  {% else %}
+    <span class="meta">No agents configured</span>
+  {% endfor %}
+  <a href="/agents" class="btn btn-secondary btn-sm" style="margin-left:auto;">Manage agents</a>
+</div>
+
 <!-- Stats Row -->
 <div class="grid-3" style="margin-bottom:24px;">
   <div class="card" style="text-align:center; padding:16px;">
@@ -161,6 +172,67 @@
         </details>
         {% endif %}
       {% endfor %}
+
+      <!-- Per-asset angle builder run widget -->
+      {% if angle_agents %}
+        {% for a in assets %}
+        {% set run = asset_runs.get(a.id) %}
+        <details style="margin-top:8px; border:1px solid var(--border); border-radius:var(--radius);">
+          <summary style="padding:8px 14px; background:var(--bg); font-size:13px; cursor:pointer; user-select:none;">
+            Asset #{{ a.id }} — Angle Builder
+            {% if run %}
+              {% if run.status == 'success' %}
+                <span class="badge badge-ready" style="margin-left:8px;">
+                  {{ run.status }} · {{ run.created_at.strftime('%b %d %H:%M') }}
+                  {% set out = run.output_json %}
+                  {% if out %}· see run #{{ run.id }}{% endif %}
+                </span>
+              {% else %}
+                <span class="badge" style="background:#fdecea; color:#c0392b; margin-left:8px;">
+                  error · {{ run.created_at.strftime('%b %d %H:%M') }}
+                </span>
+              {% endif %}
+            {% else %}
+              <span class="meta" style="margin-left:8px;">not run yet</span>
+            {% endif %}
+          </summary>
+          <div style="padding:14px;">
+            <form method="post" action="/assets/{{ a.id }}/run-angle-builder?project_id={{ project.id }}" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:{% if run %}12px{% else %}0{% endif %};">
+              <select name="agent_name" style="width:auto;">
+                {% for ag in angle_agents %}
+                <option value="{{ ag.name }}">{{ ag.name }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn btn-primary btn-sm">Run Angle Builder</button>
+              <a href="/agents" class="meta" style="font-size:12px;">edit prompts</a>
+            </form>
+            {% if run %}
+              <div style="border-top:1px solid var(--border); padding-top:10px; margin-top:2px;">
+                <div style="margin-bottom:6px;">
+                  <span class="meta">Last run:</span>
+                  Agent <strong>{{ run.agent.name if run.agent else run.agent_id }}</strong> ·
+                  {{ run.status }} ·
+                  {% if run.duration_ms %}{{ run.duration_ms }}ms · {% endif %}
+                  {{ run.created_at.strftime('%b %d, %Y %H:%M') }}
+                  · <a href="/api/agent-runs/{{ run.id }}" target="_blank" class="meta" style="color:var(--primary);">view JSON</a>
+                </div>
+                {% if run.status == 'error' and run.error_message %}
+                  <div style="color:#c0392b; font-size:12px; background:#fdecea; padding:8px 12px; border-radius:var(--radius);">
+                    {{ run.error_message }}
+                  </div>
+                {% endif %}
+                {% if run.status == 'success' and run.output_json %}
+                  <div class="meta" style="font-size:12px;">
+                    {% set out = run.output_json %}
+                    Output: {{ out }}
+                  </div>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        </details>
+        {% endfor %}
+      {% endif %}
 
       <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:16px;">
       {% endif %}

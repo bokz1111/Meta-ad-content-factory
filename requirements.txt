@@ -6,3 +6,4 @@ python-multipart==0.0.12
 pydantic==2.10.1
 requests==2.32.3
 beautifulsoup4==4.12.3
+jsonschema==4.23.0

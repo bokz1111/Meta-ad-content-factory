@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Agents — Meta Ads Factory{% endblock %}
+
+{% block content %}
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+  <h1 style="margin-bottom:0;">Agents</h1>
+  <a href="/agents/new" class="btn btn-primary">+ New Agent</a>
+</div>
+
+<p style="color:var(--text-muted); margin-bottom:20px; font-size:13px;">
+  Agents define the prompts and model settings used to generate content.
+  Edit system prompts and user templates without any code changes.
+  Set <code>ANTHROPIC_API_KEY</code> in your environment to use the real model;
+  without it the app runs in <strong>stub mode</strong> and returns demo output.
+</p>
+
+{% if agents %}
+<div class="card" style="padding:0;">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Purpose</th>
+        <th>Model</th>
+        <th>Temp</th>
+        <th>Max tokens</th>
+        <th>Enabled</th>
+        <th>Updated</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ag in agents %}
+      <tr>
+        <td>
+          <a href="/agents/{{ ag.id }}" style="font-weight:600; color:var(--primary); text-decoration:none;">
+            {{ ag.name }}
+          </a>
+          {% if ag.description %}
+            <div class="meta" style="font-size:11px; margin-top:2px;">{{ ag.description }}</div>
+          {% endif %}
+        </td>
+        <td><span class="badge badge-draft">{{ ag.purpose }}</span></td>
+        <td class="meta">{{ ag.model_name }}</td>
+        <td class="meta">{{ ag.temperature }}</td>
+        <td class="meta">{{ ag.max_tokens }}</td>
+        <td>
+          {% if ag.is_enabled %}
+            <span class="badge badge-ready">on</span>
+          {% else %}
+            <span class="badge badge-draft">off</span>
+          {% endif %}
+        </td>
+        <td class="meta">{{ ag.updated_at.strftime('%b %d, %Y') if ag.updated_at else ag.created_at.strftime('%b %d, %Y') }}</td>
+        <td><a href="/agents/{{ ag.id }}" class="btn btn-secondary btn-sm">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <p>No agents yet. Default agents are seeded on startup.</p>
+    <a href="/agents/new" class="btn btn-primary">Create an agent</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -4,9 +4,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
-from .backend.database import init_db
+from .backend.database import init_db, SessionLocal
 from .backend.routers import projects as projects_router
 from .backend.routers import assets as assets_router
+from .backend.routers import agents as agents_router
 
 app = FastAPI(title="Meta Ads Creative Factory", version="0.1.0")
 
@@ -21,11 +22,19 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 @app.on_event("startup")
 def on_startup():
     init_db()
+    # Seed default agents (idempotent — skips if already present)
+    from .backend.seed import seed_default_agents
+    db = SessionLocal()
+    try:
+        seed_default_agents(db)
+    finally:
+        db.close()
 
 
 # Include routers
 app.include_router(projects_router.router)
 app.include_router(assets_router.router)
+app.include_router(agents_router.router)
 
 
 @app.get("/health")

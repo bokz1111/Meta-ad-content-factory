@@ -8,6 +8,8 @@ A local MVP application for storing marketing data and preparing ad variants for
 - **Assets** — Store landing page URLs and image paths per project
 - **Angles** — Define messaging angles (pain point, benefit, hook, proof)
 - **Variants** — Create ad copy variants linked to assets and angles
+- **Agent Registry** — DB-backed prompt store; edit system prompts + templates in the UI without code changes
+- **Angle Builder** — Run `angle_builder_en` / `angle_builder_ja` to auto-generate angles from landing page data
 - **API** — JSON REST endpoints alongside the server-rendered UI
 
 ## Setup
@@ -83,6 +85,12 @@ ads_factory/
 | POST | `/api/variants` | Create a variant |
 | POST | `/assets/{id}/fetch-landing` | Fetch + store landing page summary |
 | GET | `/assets/{id}/landing` | Get latest landing summary JSON |
+| POST | `/assets/{id}/run-angle-builder` | Run angle builder agent for an asset |
+| GET | `/agents` | List agents (UI) |
+| GET | `/api/agents` | List agents (JSON) |
+| GET | `/agents/{id}` | Edit agent form |
+| POST | `/agents/{id}` | Save agent edits |
+| GET | `/api/agent-runs/{id}` | Get a single run result JSON |
 
 ## Database Models
 
@@ -91,6 +99,8 @@ ads_factory/
 - **Angle** — Messaging angle (pain point, benefit, hook, proof) per language
 - **Variant** — Ad copy (headline, primary text, description, overlay) linked to asset + angle
 - **LandingSummary** — Extracted marketing data per asset (title, H1, H2s, bullets, CTAs, prices, paragraphs); cached by `content_hash`
+- **AgentConfig** — Reusable agent definition: system prompt, user template, JSON schema, model settings
+- **AgentRun** — Execution log for every agent invocation (inputs, outputs, status, duration)
 - **Render** — Generated image paths (square/portrait/story formats)
 - **QCResult** — Quality check scores per render
 
@@ -129,7 +139,41 @@ POST /assets/{id}/fetch-landing   → trigger a fetch (add ?project_id=N to redi
 
 ---
 
+## Step 3 done: Agent Registry + Angle Builder
+
+### Setting `ANTHROPIC_API_KEY`
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+uvicorn ads_factory.main:app --reload --port 8000
+```
+
+Without the key the app runs in **stub mode** — the angle builder returns 3 hard-coded demo angles per run so the full UI/DB pipeline can be tested for free.
+
+### How to edit agent prompts
+
+1. Navigate to `/agents` (linked from every project dashboard)
+2. Click **Edit** on `angle_builder_en` or `angle_builder_ja`
+3. Modify **System Prompt** or **User Prompt Template** — save without restarting the server
+4. Allowed template variables: `{{brand_name}}`, `{{brand_rules}}`, `{{product_description}}`, `{{offer_description}}`, `{{landing_summary_json}}`, `{{language}}`, `{{project_name}}`
+5. The **Output JSON Schema** field validates the model response; leave blank to skip validation
+
+### How to run the Angle Builder
+
+1. Open a project dashboard (`/projects/{id}`)
+2. In the **Assets** section expand the **"Asset #N — Angle Builder"** panel
+3. Select an agent (`angle_builder_en` or `angle_builder_ja`) and click **Run Angle Builder**
+4. New angles appear in the **Angles** section (duplicates are skipped automatically)
+5. Each run is logged — click **view JSON** to inspect inputs/outputs
+
+### Stub mode
+
+When `ANTHROPIC_API_KEY` is absent, `llm.generate()` returns 3 deterministic demo angles instead of calling the API. The rest of the pipeline (JSON extraction, schema validation, upsert, AgentRun logging) runs exactly as in production.
+
+---
+
 ## Requirements
 
 - Python 3.11+
 - No external services required (SQLite, local files only)
+- Optional: `ANTHROPIC_API_KEY` for real LLM calls (stub mode works without it)
