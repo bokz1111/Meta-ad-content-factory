@@ -3,16 +3,15 @@ Angle Builder orchestration service.
 
 Steps:
   1. Load Asset, Project, latest LandingSummary
-  2. Render the agent's user_prompt_template
+  2. Render the agent's user_prompt_template via template_render
   3. Call the LLM via llm.generate()
-  4. Extract the first valid JSON object from the response
+  4. Extract the first valid JSON object via json_extract_validate
   5. Validate against the agent's output_json_schema
   6. Upsert new Angles (skip near-duplicates)
   7. Persist an AgentRun record and return it
 """
 import hashlib
 import json
-import re
 import time
 from datetime import datetime
 from typing import Optional
@@ -21,32 +20,8 @@ from sqlalchemy.orm import Session
 
 from ..models import AgentConfig, AgentRun, Asset, Angle, LandingSummary, Project
 from .llm import generate as llm_generate
-from .prompt_renderer import render as render_prompt
-
-
-# ── JSON extraction ───────────────────────────────────────────────────────────
-
-def _extract_json(text: str):
-    """Extract the first valid JSON object or array from *text*."""
-    # Strip markdown code fences if the model wrapped the JSON
-    cleaned = re.sub(r"^```(?:json)?\s*", "", text.strip(), flags=re.MULTILINE)
-    cleaned = re.sub(r"\s*```\s*$", "", cleaned.strip(), flags=re.MULTILINE)
-
-    # Try the whole cleaned text first (ideal path)
-    try:
-        return json.loads(cleaned.strip())
-    except json.JSONDecodeError:
-        pass
-
-    # Fall back: find the outermost { … } or [ … ] block
-    for pattern in (r"(\{[\s\S]*\})", r"(\[[\s\S]*\])"):
-        m = re.search(pattern, cleaned)
-        if m:
-            try:
-                return json.loads(m.group(1))
-            except json.JSONDecodeError:
-                continue
-    return None
+from .template_render import render_template
+from .json_extract_validate import extract_first_json, validate_json
 
 
 # ── Duplicate detection ───────────────────────────────────────────────────────
@@ -136,7 +111,7 @@ def run_angle_builder(
 
     # ── 3. Render prompt ──────────────────────────────────────────────────────
     try:
-        rendered_prompt = render_prompt(agent.user_prompt_template, variables)
+        rendered_prompt = render_template(agent.user_prompt_template, variables)
     except ValueError as exc:
         return _error_run(f"Prompt render error: {exc}")
 
@@ -147,7 +122,7 @@ def run_angle_builder(
         return _error_run(f"LLM call failed: {exc}")
 
     # ── 5. Extract JSON ───────────────────────────────────────────────────────
-    parsed = _extract_json(raw_output)
+    parsed = extract_first_json(raw_output)
     if parsed is None:
         return _error_run(
             "Could not extract valid JSON from model output",
@@ -157,14 +132,12 @@ def run_angle_builder(
     # ── 6. JSON schema validation ─────────────────────────────────────────────
     if agent.output_json_schema:
         try:
-            import jsonschema
-            schema = json.loads(agent.output_json_schema)
-            jsonschema.validate(instance=parsed, schema=schema)
+            validate_json(parsed, agent.output_json_schema)
         except json.JSONDecodeError:
             return _error_run("Agent output_json_schema is not valid JSON")
-        except jsonschema.ValidationError as exc:
+        except Exception as exc:
             return _error_run(
-                f"Output failed schema validation: {exc.message}",
+                f"Output failed schema validation: {exc}",
                 {"raw_excerpt": raw_output[:500]},
             )
 

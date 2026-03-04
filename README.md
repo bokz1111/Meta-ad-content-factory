@@ -14,6 +14,9 @@ A local MVP application for storing marketing data and preparing ad variants for
 
 ## Setup
 
+> **Windows note:** Use Python 3.11 to avoid `pydantic-core` compilation issues on Windows.
+> On Python 3.12+ you may need `pip install --pre pydantic-core` if pre-built wheels are unavailable.
+
 ### 1. Create a virtual environment
 
 ```bash
@@ -27,15 +30,28 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Run the server
+### 3. (Optional) Set Anthropic API key
+
+Without the key the app runs in **stub mode** — angle builder returns 3 demo angles per run so you can test the full pipeline offline.
+
+```bash
+# Linux / macOS
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# Windows PowerShell
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
+```
+
+### 4. Run the server
 
 ```bash
 uvicorn ads_factory.main:app --reload --port 8000
 ```
 
-### 4. Open the app
+### 5. Open the app
 
 - UI: http://localhost:8000/projects
+- Agents: http://localhost:8000/agents
 - API docs: http://localhost:8000/docs
 - Health check: http://localhost:8000/health
 
@@ -177,3 +193,45 @@ When `ANTHROPIC_API_KEY` is absent, `llm.generate()` returns 3 deterministic dem
 - Python 3.11+
 - No external services required (SQLite, local files only)
 - Optional: `ANTHROPIC_API_KEY` for real LLM calls (stub mode works without it)
+
+---
+
+## Step 4 done: Agent Registry — dedicated services + run detail page
+
+### New services
+
+| File | Purpose |
+|---|---|
+| `backend/services/template_render.py` | Canonical `render_template()` — safe `{{var}}` substitution, rejects unknown variables |
+| `backend/services/json_extract_validate.py` | `extract_first_json()` strips fences, finds JSON in prose; `validate_json()` validates against stored schema |
+
+### New routes
+
+| Method | Path | |
+|---|---|---|
+| GET | `/runs/{id}` | Run detail page (status, input/output JSON, error, links) |
+| POST | `/assets/{id}/run` | JSON body API: `{"agent_name": "angle_builder_en"}` → run + return result |
+| GET | `/assets/{id}/angles?language=EN` | List angles for asset's project (JSON) |
+
+### How to run the angle builder and see results
+
+1. Open a project (`/projects/{id}`) and add an asset with a landing page URL
+2. Click **Fetch** to extract the landing page
+3. Expand **"Asset #N — Angle Builder"**, choose an agent, click **Run Angle Builder**
+4. New angles appear in the **Angles** section grouped by language (EN / JP)
+5. Click **view run** next to the status badge to see the full run detail page (`/runs/{id}`)
+
+### JSON API (offline-friendly)
+
+```bash
+# Run angle builder via JSON API (no redirect, returns structured result)
+curl -X POST http://localhost:8000/assets/1/run \
+     -H "Content-Type: application/json" \
+     -d '{"agent_name": "angle_builder_en", "run_type": "angle_builder"}'
+
+# Get angles for an asset
+curl http://localhost:8000/assets/1/angles?language=EN
+
+# Get raw run JSON
+curl http://localhost:8000/api/agent-runs/1
+```

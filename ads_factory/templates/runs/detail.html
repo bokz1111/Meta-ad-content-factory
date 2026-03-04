@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Run #{{ run.id }} — {{ run.agent.name if run.agent else 'Agent' }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+  <a href="/agents/{{ run.agent_id }}" style="color:var(--text-muted); text-decoration:none; font-size:13px;">
+    ← Back to agent
+  </a>
+  {% if run.project_id %}
+  · <a href="/projects/{{ run.project_id }}" style="color:var(--text-muted); text-decoration:none; font-size:13px;">
+    project #{{ run.project_id }}
+  </a>
+  {% endif %}
+</div>
+
+<div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
+  <h1 style="margin-bottom:0;">Run #{{ run.id }}</h1>
+  {% if run.status == 'success' %}
+    <span class="badge badge-ready" style="font-size:14px; padding:4px 12px;">success</span>
+  {% else %}
+    <span class="badge" style="font-size:14px; padding:4px 12px; background:#fdecea; color:#c0392b;">error</span>
+  {% endif %}
+</div>
+
+<!-- Summary card -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="grid-2" style="gap:16px;">
+    <div>
+      <div class="meta" style="font-size:11px; margin-bottom:4px;">AGENT</div>
+      <a href="/agents/{{ run.agent_id }}" style="font-weight:600; color:var(--primary); text-decoration:none;">
+        {{ run.agent.name if run.agent else run.agent_id }}
+      </a>
+    </div>
+    <div>
+      <div class="meta" style="font-size:11px; margin-bottom:4px;">RUN TYPE</div>
+      <span style="font-weight:500;">{{ run.run_type or '—' }}</span>
+    </div>
+    <div>
+      <div class="meta" style="font-size:11px; margin-bottom:4px;">PROJECT</div>
+      {% if run.project_id %}
+        <a href="/projects/{{ run.project_id }}" style="color:var(--primary); text-decoration:none;">
+          #{{ run.project_id }}
+        </a>
+      {% else %}—{% endif %}
+    </div>
+    <div>
+      <div class="meta" style="font-size:11px; margin-bottom:4px;">ASSET</div>
+      <span>{{ run.asset_id or '—' }}</span>
+    </div>
+    <div>
+      <div class="meta" style="font-size:11px; margin-bottom:4px;">DURATION</div>
+      <span>{{ run.duration_ms ~ ' ms' if run.duration_ms else '—' }}</span>
+    </div>
+    <div>
+      <div class="meta" style="font-size:11px; margin-bottom:4px;">WHEN</div>
+      <span>{{ run.created_at.strftime('%b %d, %Y at %H:%M:%S') }}</span>
+    </div>
+  </div>
+
+  {% if run.status == 'error' and run.error_message %}
+  <div style="margin-top:16px; padding:12px 14px; background:#fdecea; border-radius:var(--radius); border-left:3px solid #c0392b;">
+    <div class="meta" style="font-size:11px; margin-bottom:4px;">ERROR</div>
+    <code style="font-size:13px; color:#c0392b; white-space:pre-wrap;">{{ run.error_message }}</code>
+  </div>
+  {% endif %}
+
+  {% if run.status == 'success' and output_data %}
+  <div style="margin-top:16px; padding:12px 14px; background:#eafaf1; border-radius:var(--radius); border-left:3px solid #27ae60;">
+    <div class="meta" style="font-size:11px; margin-bottom:6px;">OUTPUT SUMMARY</div>
+    <div style="display:flex; gap:20px; flex-wrap:wrap;">
+      {% for k, v in output_data.items() %}
+      <div>
+        <span class="meta">{{ k.replace('_', ' ') }}:</span>
+        <strong>{{ v }}</strong>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Input JSON -->
+<div class="section" style="margin-bottom:12px;">
+  <details>
+    <summary>Input JSON</summary>
+    <div class="details-body">
+      {% if input_data %}
+      <pre style="font-size:12px; background:var(--bg); padding:14px; border-radius:var(--radius); overflow:auto; max-height:400px; margin:0;">{{ input_data | tojson(indent=2) }}</pre>
+      {% else %}
+      <p class="meta">No input data recorded.</p>
+      {% endif %}
+    </div>
+  </details>
+</div>
+
+<!-- Output JSON -->
+<div class="section">
+  <details {% if run.status == 'success' %}open{% endif %}>
+    <summary>Output JSON</summary>
+    <div class="details-body">
+      {% if output_data %}
+      <pre style="font-size:12px; background:var(--bg); padding:14px; border-radius:var(--radius); overflow:auto; max-height:400px; margin:0;">{{ output_data | tojson(indent=2) }}</pre>
+      {% else %}
+      <p class="meta">No output data recorded.</p>
+      {% endif %}
+    </div>
+  </details>
+</div>
+
+<div style="margin-top:20px; display:flex; gap:12px;">
+  <a href="/agents/{{ run.agent_id }}" class="btn btn-secondary">Back to agent</a>
+  <a href="/api/agent-runs/{{ run.id }}" target="_blank" class="btn btn-secondary">Raw JSON API</a>
+  {% if run.project_id %}
+  <a href="/projects/{{ run.project_id }}" class="btn btn-secondary">Project dashboard</a>
+  {% endif %}
+</div>
+{% endblock %}

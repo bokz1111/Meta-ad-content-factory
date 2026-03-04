@@ -6,10 +6,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import AgentConfig, AgentRun, Asset
+from ..models import AgentConfig, AgentRun, Asset, Angle
 from ..services.angle_builder import run_angle_builder
 
 router = APIRouter()
@@ -161,7 +162,83 @@ def run_angle_builder_route(
     return RedirectResponse(url=f"/projects/{pid}", status_code=303)
 
 
+# ── Run detail UI ─────────────────────────────────────────────────────────────
+
+@router.get("/runs/{run_id}", response_class=HTMLResponse)
+def run_detail_ui(request: Request, run_id: int, db: Session = Depends(get_db)):
+    run = db.query(AgentRun).filter(AgentRun.id == run_id).first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    return templates.TemplateResponse("runs/detail.html", {
+        "request": request,
+        "run": run,
+        "input_data": json.loads(run.input_json) if run.input_json else None,
+        "output_data": json.loads(run.output_json) if run.output_json else None,
+    })
+
+
 # ── JSON API ──────────────────────────────────────────────────────────────────
+
+
+class RunAgentRequest(BaseModel):
+    agent_name: str = "angle_builder_en"
+    run_type: str = "angle_builder"
+    language: Optional[str] = "EN"
+
+
+@router.post("/assets/{asset_id}/run")
+def run_asset_agent_api(asset_id: int, req: RunAgentRequest, db: Session = Depends(get_db)):
+    """JSON API endpoint: run an agent against an asset."""
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    agent = (
+        db.query(AgentConfig)
+        .filter(AgentConfig.name == req.agent_name, AgentConfig.is_enabled == True)  # noqa: E712
+        .first()
+    )
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent '{req.agent_name}' not found or disabled")
+
+    run = run_angle_builder(agent, asset_id, asset.project_id, db)
+    return {
+        "run_id": run.id,
+        "run_url": f"/runs/{run.id}",
+        "status": run.status,
+        "error_message": run.error_message,
+        "output": json.loads(run.output_json) if run.output_json else None,
+    }
+
+
+@router.get("/assets/{asset_id}/angles")
+def get_asset_angles_api(
+    asset_id: int,
+    language: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Return angles for the project that owns this asset, optionally filtered by language."""
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    q = db.query(Angle).filter(Angle.project_id == asset.project_id)
+    if language:
+        q = q.filter(Angle.language == language.upper())
+    angles = q.order_by(Angle.language, Angle.id.desc()).all()
+
+    return [
+        {
+            "id": a.id,
+            "language": a.language,
+            "name": a.name,
+            "pain_point": a.pain_point,
+            "benefit": a.benefit,
+            "hook": a.hook,
+            "proof": a.proof,
+        }
+        for a in angles
+    ]
 
 @router.get("/api/agents")
 def list_agents_api(db: Session = Depends(get_db)):

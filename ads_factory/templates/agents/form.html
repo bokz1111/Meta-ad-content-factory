@@ -157,9 +157,10 @@
             <td class="meta">{{ r.asset_id or '—' }}</td>
             <td class="meta">{{ r.duration_ms ~ 'ms' if r.duration_ms else '—' }}</td>
             <td class="meta">{{ r.created_at.strftime('%b %d %H:%M') }}</td>
-            <td>
+            <td style="white-space:nowrap;">
+              <a href="/runs/{{ r.id }}" class="btn btn-secondary btn-sm">View</a>
               <a href="/api/agent-runs/{{ r.id }}" target="_blank"
-                class="btn btn-secondary btn-sm">JSON</a>
+                class="btn btn-secondary btn-sm" style="margin-left:4px;">JSON</a>
             </td>
           </tr>
           {% if r.status == 'error' and r.error_message %}

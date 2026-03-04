@@ -214,7 +214,8 @@
                   {{ run.status }} ·
                   {% if run.duration_ms %}{{ run.duration_ms }}ms · {% endif %}
                   {{ run.created_at.strftime('%b %d, %Y %H:%M') }}
-                  · <a href="/api/agent-runs/{{ run.id }}" target="_blank" class="meta" style="color:var(--primary);">view JSON</a>
+                  · <a href="/runs/{{ run.id }}" style="color:var(--primary);">view run</a>
+                  · <a href="/api/agent-runs/{{ run.id }}" target="_blank" class="meta" style="color:var(--text-muted);">JSON</a>
                 </div>
                 {% if run.status == 'error' and run.error_message %}
                   <div style="color:#c0392b; font-size:12px; background:#fdecea; padding:8px 12px; border-radius:var(--radius);">
@@ -222,10 +223,7 @@
                   </div>
                 {% endif %}
                 {% if run.status == 'success' and run.output_json %}
-                  <div class="meta" style="font-size:12px;">
-                    {% set out = run.output_json %}
-                    Output: {{ out }}
-                  </div>
+                  <div class="meta" style="font-size:12px;">{{ run.output_json }}</div>
                 {% endif %}
               </div>
             {% endif %}
@@ -266,30 +264,37 @@
     <summary>Angles ({{ angles|length }})</summary>
     <div class="details-body">
       {% if angles %}
-      <div style="display:grid; gap:12px; margin-bottom:16px;">
-        {% for ang in angles %}
-        <div style="border:1px solid var(--border); border-radius:var(--radius); padding:14px;">
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-            <strong>{{ ang.name }}</strong>
-            <span class="badge badge-draft">{{ ang.language }}</span>
+      {% set langs = angles | map(attribute='language') | unique | list | sort %}
+      {% for lang in langs %}
+        {% set lang_angles = angles | selectattr('language', 'equalto', lang) | list %}
+        <div style="margin-bottom:20px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+            <span class="badge badge-draft" style="font-size:13px;">{{ lang }}</span>
+            <span class="meta">{{ lang_angles | length }} angle{{ 's' if lang_angles | length != 1 else '' }}</span>
           </div>
-          <div class="grid-2">
-            {% if ang.pain_point %}
-            <div><span class="meta">Pain Point:</span> {{ ang.pain_point }}</div>
-            {% endif %}
-            {% if ang.benefit %}
-            <div><span class="meta">Benefit:</span> {{ ang.benefit }}</div>
-            {% endif %}
-            {% if ang.hook %}
-            <div><span class="meta">Hook:</span> {{ ang.hook }}</div>
-            {% endif %}
-            {% if ang.proof %}
-            <div><span class="meta">Proof:</span> {{ ang.proof }}</div>
-            {% endif %}
+          <div style="display:grid; gap:10px;">
+            {% for ang in lang_angles %}
+            <div style="border:1px solid var(--border); border-radius:var(--radius); padding:14px;">
+              <div style="font-weight:600; margin-bottom:8px;">{{ ang.name }}</div>
+              <div class="grid-2">
+                {% if ang.pain_point %}
+                <div><span class="meta">Pain Point:</span> {{ ang.pain_point }}</div>
+                {% endif %}
+                {% if ang.benefit %}
+                <div><span class="meta">Benefit:</span> {{ ang.benefit }}</div>
+                {% endif %}
+                {% if ang.hook %}
+                <div><span class="meta">Hook:</span> <em>{{ ang.hook }}</em></div>
+                {% endif %}
+                {% if ang.proof %}
+                <div><span class="meta">Proof:</span> {{ ang.proof }}</div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
           </div>
         </div>
-        {% endfor %}
-      </div>
+      {% endfor %}
       {% endif %}
 
       <form method="post" action="/projects/{{ project.id }}/angles">
